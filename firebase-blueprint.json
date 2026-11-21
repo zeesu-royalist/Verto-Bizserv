@@ -1,0 +1,250 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Application user profile with role-based access control and active status.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID matching the document ID."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Full display name of the recruiter or admin."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "minLength": 3,
+          "maxLength": 200,
+          "description": "Verified email address of the user."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["recruiter", "admin"],
+          "description": "RBAC role governing row-level isolation vs. master database access."
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Whether the account is active and allowed to access the system."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the user record was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the user record was last modified."
+        }
+      },
+      "required": ["uid", "name", "email", "role", "isActive", "createdAt", "updatedAt"]
+    },
+    "Candidate": {
+      "title": "Candidate",
+      "description": "Nine-column recruitment candidate submission record with strict recruiter ownership metadata.",
+      "type": "object",
+      "properties": {
+        "submissionDate": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 10,
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+          "description": "Column 1: Submission date in YYYY-MM-DD format."
+        },
+        "managerName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Column 2: Hiring or account manager name."
+        },
+        "recruiterName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Column 3: Recruiter display name (locked to profile for recruiters, editable by admins)."
+        },
+        "clientName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "description": "Column 4: Client company name."
+        },
+        "purpose": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "description": "Column 5: Recruitment purpose or pipeline stage."
+        },
+        "candidateName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[A-Za-z]+( [A-Za-z]+)*$",
+          "description": "Column 6: Candidate full name containing letters and spaces only."
+        },
+        "candidateMobile": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 10,
+          "pattern": "^[0-9]{10}$",
+          "description": "Column 7: Candidate 10-digit mobile number."
+        },
+        "city": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Column 8: Name of the city where the store or warehouse is located."
+        },
+        "resumeUrl": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 2000,
+          "description": "Column 9: Optional HTTPS resume download URL or external link."
+        },
+        "resumeFileName": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 200,
+          "description": "Optional filename for uploaded resume file."
+        },
+        "resumeStoragePath": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 300,
+          "description": "Optional Firebase Storage path for uploaded resume."
+        },
+        "recruiter_uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Owner recruiter UID enforced by Firestore Security Rules."
+        },
+        "recruiter_email": {
+          "type": "string",
+          "format": "email",
+          "minLength": 3,
+          "maxLength": 200,
+          "description": "Owner recruiter email attached at submission time."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "System server timestamp when the submission was recorded."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "System server timestamp when the submission was last edited."
+        }
+      },
+      "required": [
+        "submissionDate",
+        "managerName",
+        "recruiterName",
+        "clientName",
+        "purpose",
+        "candidateName",
+        "candidateMobile",
+        "city",
+        "resumeUrl",
+        "resumeFileName",
+        "resumeStoragePath",
+        "recruiter_uid",
+        "recruiter_email",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ManagerOption": {
+      "title": "ManagerOption",
+      "description": "Admin-managed Manager Name dropdown option for the candidate Data Entry Form.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Display name of the hiring or account manager."
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Whether this manager option is active in the Data Entry Form dropdown."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the option was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the option was last updated."
+        }
+      },
+      "required": ["name", "isActive", "createdAt", "updatedAt"]
+    },
+    "ClientOption": {
+      "title": "ClientOption",
+      "description": "Admin-managed Client Name dropdown option for the candidate Data Entry Form.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "description": "Display name of the client company."
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Whether this client option is active in the Data Entry Form dropdown."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the option was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the option was last updated."
+        }
+      },
+      "required": ["name", "isActive", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/User"
+      },
+      "description": "User profiles storing uid, name, email, role (recruiter/admin), and isActive status."
+    },
+    "/candidates/{candidateId}": {
+      "schema": {
+        "$ref": "#/entities/Candidate"
+      },
+      "description": "Candidate tracking records isolated per recruiter_uid for recruiters and merged for admins."
+    },
+    "/managers/{managerId}": {
+      "schema": {
+        "$ref": "#/entities/ManagerOption"
+      },
+      "description": "Admin-managed list of Manager Names shown in the Data Entry Form dropdown."
+    },
+    "/clients/{clientId}": {
+      "schema": {
+        "$ref": "#/entities/ClientOption"
+      },
+      "description": "Admin-managed list of Client Names shown in the Data Entry Form dropdown."
+    }
+  }
+}

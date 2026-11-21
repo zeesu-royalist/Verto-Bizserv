@@ -1,0 +1,363 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Pillar 0: Global Default-Deny Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // =========================================================================
+    // Global Hardened Primitives
+    // =========================================================================
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isBootstrappedAdmin() {
+      return isVerified() && request.auth.token.email == 'rahul.kumar376603@gmail.com';
+    }
+
+    function userDocExists() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function getUserDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isActiveUser() {
+      return isVerified() && userDocExists() && getUserDoc().data.isActive == true;
+    }
+
+    function isAdmin() {
+      return isBootstrappedAdmin() || (
+        isVerified() &&
+        userDocExists() &&
+        getUserDoc().data.isActive == true &&
+        getUserDoc().data.role == 'admin'
+      );
+    }
+
+    // =========================================================================
+    // Validation Blueprints (Pillar 2: Anti-Update-Gap & Blueprint Sync)
+    // =========================================================================
+
+    function isValidUser(data, userId) {
+      return data.keys().hasAll(['uid', 'name', 'email', 'role', 'isActive', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'name', 'email', 'role', 'isActive', 'createdAt', 'updatedAt'])
+        && data.uid is string && data.uid == userId && isValidId(data.uid)
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 100
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 200
+        && data.role is string && data.role in ['recruiter', 'admin']
+        && data.isActive is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidResumeUrl(url) {
+      return url is string && url.size() <= 2000 && (
+        url == '' || url.matches('^https?://.+')
+      );
+    }
+
+    function isValidCandidate(data) {
+      return data.keys().hasAll([
+          'submissionDate',
+          'managerName',
+          'recruiterName',
+          'clientName',
+          'purpose',
+          'candidateName',
+          'candidateMobile',
+          'city',
+          'resumeUrl',
+          'resumeFileName',
+          'resumeStoragePath',
+          'recruiter_uid',
+          'recruiter_email',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'submissionDate',
+          'managerName',
+          'recruiterName',
+          'clientName',
+          'purpose',
+          'candidateName',
+          'candidateMobile',
+          'city',
+          'resumeUrl',
+          'resumeFileName',
+          'resumeStoragePath',
+          'recruiter_uid',
+          'recruiter_email',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.submissionDate is string
+        && data.submissionDate.size() == 10
+        && data.submissionDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && data.managerName is string && data.managerName.size() >= 1 && data.managerName.size() <= 100
+        && data.recruiterName is string && data.recruiterName.size() >= 1 && data.recruiterName.size() <= 100
+        && data.clientName is string && data.clientName.size() >= 1 && data.clientName.size() <= 120
+        && data.purpose is string && data.purpose.size() >= 1 && data.purpose.size() <= 80
+        && data.candidateName is string
+        && data.candidateName.size() >= 1
+        && data.candidateName.size() <= 100
+        && data.candidateName.matches('^[A-Za-z]+( [A-Za-z]+)*$')
+        && data.candidateMobile is string
+        && data.candidateMobile.size() == 10
+        && data.candidateMobile.matches('^[0-9]{10}$')
+        && data.city is string && data.city.size() >= 1 && data.city.size() <= 100
+        && isValidResumeUrl(data.resumeUrl)
+        && data.resumeFileName is string && data.resumeFileName.size() <= 200
+        && data.resumeStoragePath is string && data.resumeStoragePath.size() <= 300
+        && data.recruiter_uid is string && isValidId(data.recruiter_uid)
+        && data.recruiter_email is string && data.recruiter_email.size() >= 3 && data.recruiter_email.size() <= 200
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // =========================================================================
+    // Collection: /users/{userId}
+    // PII Isolation: Only owner or active Admin can read user documents.
+    // =========================================================================
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && (
+        request.auth.uid == userId || isAdmin()
+      );
+
+      allow list: if isSignedIn() && (
+        resource.data.uid == request.auth.uid || isAdmin()
+      );
+
+      allow create: if isVerified()
+        && isValidId(userId)
+        && isValidUser(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (
+          (
+            request.auth.uid == userId
+            && incoming().email == request.auth.token.email
+            && incoming().isActive == true
+            && (
+              incoming().role == 'recruiter'
+              || (incoming().role == 'admin' && isBootstrappedAdmin())
+            )
+          )
+          || isAdmin()
+        );
+
+      allow update: if isVerified()
+        && isValidId(userId)
+        && isValidUser(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().email == existing().email
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          // Tier 1: Admin user management (promote/demote/deactivate/rename)
+          (
+            isAdmin()
+            && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'role', 'isActive', 'updatedAt'])
+          )
+          ||
+          // Tier 2: Active owner updating own display name only
+          (
+            request.auth.uid == userId
+            && existing().isActive == true
+            && incoming().role == existing().role
+            && incoming().isActive == existing().isActive
+            && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'updatedAt'])
+          )
+        );
+
+      // Preserve audit trail: deactivate users via isActive instead of deleting.
+      allow delete: if false;
+    }
+
+    // =========================================================================
+    // Collection: /candidates/{candidateId}
+    // Strict Row-Level Isolation for Recruiters; Merged Access for Admins.
+    // =========================================================================
+
+    match /candidates/{candidateId} {
+      allow get: if isSignedIn() && isValidId(candidateId) && (
+        (isActiveUser() && existing().recruiter_uid == request.auth.uid)
+        || isAdmin()
+      );
+
+      // Pillar 8: Rule explicitly enforces recruiter_uid == request.auth.uid for non-admins.
+      allow list: if isSignedIn() && (
+        (resource.data.recruiter_uid == request.auth.uid && isActiveUser())
+        || isAdmin()
+      );
+
+      allow create: if isVerified()
+        && isValidId(candidateId)
+        && isValidCandidate(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (
+          // Recruiter self-submission: locked to own UID, email, and profile name
+          (
+            isActiveUser()
+            && incoming().recruiter_uid == request.auth.uid
+            && incoming().recruiter_email == request.auth.token.email
+            && incoming().recruiterName == getUserDoc().data.name
+          )
+          ||
+          // Admin submission: editable recruiterName, valid referenced recruiter_uid
+          (
+            isAdmin()
+            && exists(/databases/$(database)/documents/users/$(incoming().recruiter_uid))
+          )
+        );
+
+      allow update: if isVerified()
+        && isValidId(candidateId)
+        && isValidCandidate(incoming())
+        && incoming().createdAt == existing().createdAt
+        && incoming().recruiter_uid == existing().recruiter_uid
+        && incoming().recruiter_email == existing().recruiter_email
+        && incoming().updatedAt == request.time
+        && (
+          // Tier 1: Admin Master Database edit (including recruiterName)
+          (
+            isAdmin()
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'submissionDate',
+              'managerName',
+              'recruiterName',
+              'clientName',
+              'purpose',
+              'candidateName',
+              'candidateMobile',
+              'city',
+              'resumeUrl',
+              'resumeFileName',
+              'resumeStoragePath',
+              'updatedAt'
+            ])
+          )
+          ||
+          // Tier 2: Active Recruiter editing own record (recruiterName locked)
+          (
+            isActiveUser()
+            && existing().recruiter_uid == request.auth.uid
+            && incoming().recruiterName == existing().recruiterName
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'submissionDate',
+              'managerName',
+              'clientName',
+              'purpose',
+              'candidateName',
+              'candidateMobile',
+              'city',
+              'resumeUrl',
+              'resumeFileName',
+              'resumeStoragePath',
+              'updatedAt'
+            ])
+          )
+        );
+
+      allow delete: if isVerified() && isValidId(candidateId) && (
+        (isActiveUser() && existing().recruiter_uid == request.auth.uid)
+        || isAdmin()
+      );
+    }
+
+    // =========================================================================
+    // Collections: /managers/{managerId} & /clients/{clientId}
+    // Admin-managed Data Entry Form dropdown options; read-only for active users.
+    // =========================================================================
+
+    function isValidDropdownOption(data, maxLen) {
+      return data.keys().hasAll(['name', 'isActive', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['name', 'isActive', 'createdAt', 'updatedAt'])
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= maxLen
+        && data.isActive is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    match /managers/{managerId} {
+      allow get: if isSignedIn() && isValidId(managerId) && (
+        isActiveUser() || isAdmin()
+      );
+
+      allow list: if isSignedIn() && (
+        (isActiveUser() && resource.data.isActive == true)
+        || isAdmin()
+      );
+
+      allow create: if isVerified()
+        && isValidId(managerId)
+        && isValidDropdownOption(incoming(), 100)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && isAdmin();
+
+      allow update: if isVerified()
+        && isValidId(managerId)
+        && isValidDropdownOption(incoming(), 100)
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && isAdmin()
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'isActive', 'updatedAt']);
+
+      allow delete: if isVerified() && isValidId(managerId) && isAdmin();
+    }
+
+    match /clients/{clientId} {
+      allow get: if isSignedIn() && isValidId(clientId) && (
+        isActiveUser() || isAdmin()
+      );
+
+      allow list: if isSignedIn() && (
+        (isActiveUser() && resource.data.isActive == true)
+        || isAdmin()
+      );
+
+      allow create: if isVerified()
+        && isValidId(clientId)
+        && isValidDropdownOption(incoming(), 120)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && isAdmin();
+
+      allow update: if isVerified()
+        && isValidId(clientId)
+        && isValidDropdownOption(incoming(), 120)
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && isAdmin()
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'isActive', 'updatedAt']);
+
+      allow delete: if isVerified() && isValidId(clientId) && isAdmin();
+    }
+  }
+}

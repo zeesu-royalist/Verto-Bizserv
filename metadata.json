@@ -1,0 +1,6 @@
+{
+  "name": "HireLedger — Recruitment Data Entry & Tracking",
+  "description": "Secure recruitment data entry and candidate tracking system with strict role-based access control, recruiter row-level isolation, and a merged Admin Master Database.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
