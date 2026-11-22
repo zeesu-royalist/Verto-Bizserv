@@ -1,59 +1,38 @@
 import React, { useState } from 'react';
 import {
-  createUserWithEmailAndPassword,
-  sendEmailVerification,
-  signInWithEmailAndPassword,
-  signOut,
-  updateProfile,
-  User as FirebaseUser,
-} from 'firebase/auth';
-import { AlertCircle, CheckCircle2, Lock, Mail, RefreshCw, ShieldCheck } from 'lucide-react';
-import { auth, signInWithGoogleAndDrive } from '../lib/firebase';
+  AlertCircle,
+  CheckCircle2,
+  Lock,
+  Settings,
+  ShieldCheck,
+} from 'lucide-react';
+import {
+  getGasApiUrl,
+  setGasApiUrl,
+} from '../services/gasService';
 
 interface AuthScreenProps {
-  pendingVerificationUser: FirebaseUser | null;
-  onVerificationRefresh: () => Promise<void>;
+  onLogin: (email: string, pass: string) => Promise<void>;
+  onRegister: (name: string, email: string, pass: string) => Promise<void>;
 }
 
 type AuthMode = 'signin' | 'signup';
 
-function formatAuthError(code: string | undefined, fallback: string): string {
-  switch (code) {
-    case 'auth/invalid-credential':
-    case 'auth/wrong-password':
-    case 'auth/user-not-found':
-      return 'Invalid email or password. Please check your credentials and try again.';
-    case 'auth/email-already-in-use':
-      return 'An account with this email already exists. Switch to Sign In instead.';
-    case 'auth/weak-password':
-      return 'Password must be at least 6 characters long.';
-    case 'auth/invalid-email':
-      return 'Please enter a valid work email address.';
-    case 'auth/popup-closed-by-user':
-      return 'Google sign-in popup was closed before completing authentication.';
-    case 'auth/operation-not-allowed':
-      return 'Email/Password sign-in is not yet enabled in Firebase Console (Authentication → Sign-in method → Email/Password). Use Google Sign-In or enable Email/Password in Firebase Console.';
-    case 'auth/too-many-requests':
-      return 'Too many failed attempts. Wait a few moments and try again.';
-    default:
-      return fallback;
-  }
-}
-
-export function AuthScreen({
-  pendingVerificationUser,
-  onVerificationRefresh,
-}: AuthScreenProps) {
+export function AuthScreen({ onLogin, onRegister }: AuthScreenProps) {
   const [mode, setMode] = useState<AuthMode>('signin');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [googleSubmitting, setGoogleSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [infoMsg, setInfoMsg] = useState<string | null>(null);
 
-  const handleEmailSubmit = async (e: React.FormEvent) => {
+  // Settings modal for configuring Google Apps Script URL
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [customApiUrl, setCustomApiUrl] = useState(() => getGasApiUrl());
+  const [savedConfigMessage, setSavedConfigMessage] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
     setInfoMsg(null);
@@ -77,50 +56,27 @@ export function AuthScreen({
     setSubmitting(true);
     try {
       if (mode === 'signup') {
-        const cred = await createUserWithEmailAndPassword(auth, trimmedEmail, password);
-        await updateProfile(cred.user, { displayName: trimmedName });
-        await sendEmailVerification(cred.user);
-        setInfoMsg(
-          'Account created. A verification link has been sent to your email address. Verify your inbox, then click Continue.'
-        );
+        await onRegister(trimmedName, trimmedEmail, password);
+        setInfoMsg('Account created successfully. Signing you in...');
       } else {
-        await signInWithEmailAndPassword(auth, trimmedEmail, password);
+        await onLogin(trimmedEmail, password);
       }
     } catch (err: unknown) {
-      const code = (err as { code?: string })?.code;
-      const message = err instanceof Error ? err.message : 'Authentication failed.';
-      setErrorMsg(formatAuthError(code, message));
+      const message = err instanceof Error ? err.message : 'Authentication failed. Please check your credentials.';
+      setErrorMsg(message);
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    setErrorMsg(null);
-    setInfoMsg(null);
-    setGoogleSubmitting(true);
-    try {
-      await signInWithGoogleAndDrive();
-    } catch (err: unknown) {
-      const code = (err as { code?: string })?.code;
-      const message = err instanceof Error ? err.message : 'Google Sign-In failed.';
-      setErrorMsg(formatAuthError(code, message));
-    } finally {
-      setGoogleSubmitting(false);
-    }
-  };
-
-  const handleResendVerification = async () => {
-    if (!pendingVerificationUser) return;
-    setErrorMsg(null);
-    setInfoMsg(null);
-    try {
-      await sendEmailVerification(pendingVerificationUser);
-      setInfoMsg('Verification email resent. Check your inbox and spam folder.');
-    } catch (err: unknown) {
-      const code = (err as { code?: string })?.code;
-      setErrorMsg(formatAuthError(code, 'Could not resend verification email.'));
-    }
+  const handleSaveApiUrl = (e: React.FormEvent) => {
+    e.preventDefault();
+    setGasApiUrl(customApiUrl);
+    setSavedConfigMessage(true);
+    setTimeout(() => {
+      setSavedConfigMessage(false);
+      setShowConfigModal(false);
+    }, 1200);
   };
 
   return (
@@ -137,12 +93,12 @@ export function AuthScreen({
 
           <div className="mt-14 max-w-md">
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white leading-tight [text-wrap:balance]">
-              Recruitment tracking with database-enforced recruiter isolation.
+              Recruitment tracking with Google Sheets & Drive.
             </h1>
             <p className="mt-5 text-red-100/80 text-sm sm:text-base leading-relaxed">
               Log store and warehouse hiring submissions in a standardized 9-column ledger. Each
               recruiter sees only their own pipeline while administrators oversee the unified master
-              database.
+              Google Sheet database.
             </p>
           </div>
         </div>
@@ -151,20 +107,20 @@ export function AuthScreen({
           <div className="flex items-start gap-3">
             <ShieldCheck className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-semibold text-white">Row-Level Security Rules</p>
+              <p className="text-sm font-semibold text-white">Row-Level Privacy Isolation</p>
               <p className="text-xs text-red-200/75 mt-0.5 leading-relaxed">
-                Firestore Security Rules restrict reads and writes to matching recruiter UIDs at the
-                database layer.
+                Recruiters access only their own candidates. The Master Database remains
+                consolidated in Google Sheets for Administrators.
               </p>
             </div>
           </div>
           <div className="flex items-start gap-3">
             <Lock className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-semibold text-white">Verified Identity & Audit Trail</p>
+              <p className="text-sm font-semibold text-white">Direct Google Drive Resume Storage</p>
               <p className="text-xs text-red-200/75 mt-0.5 leading-relaxed">
-                Recruiter identity is locked automatically on every submission and cannot be spoofed
-                by non-admin accounts.
+                Candidate CVs are stored directly inside your office Google Drive folder with
+                instant preview links.
               </p>
             </div>
           </div>
@@ -172,242 +128,212 @@ export function AuthScreen({
       </div>
 
       {/* Right Authentication Workspace */}
-      <div className="flex-1 flex items-center justify-center p-6 sm:p-12">
+      <div className="flex-1 flex items-center justify-center p-6 sm:p-12 relative">
+        {/* Backend Config Trigger */}
+        <button
+          type="button"
+          onClick={() => setShowConfigModal(true)}
+          className="absolute top-6 right-6 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-800 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors shadow-xs"
+          title="Configure Google Apps Script API URL"
+        >
+          <Settings className="w-3.5 h-3.5" />
+          <span>Google Sheet API</span>
+        </button>
+
         <div className="w-full max-w-md bg-white border border-slate-200 rounded-xl p-8">
-          {pendingVerificationUser ? (
-            <div>
-              <div className="w-11 h-11 rounded-lg bg-red-50 border border-red-200 flex items-center justify-center text-red-700 mb-5">
-                <Mail className="w-5 h-5" />
-              </div>
-              <h2 className="text-xl font-bold text-slate-900">Verify your email address</h2>
-              <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-                Security rules require a verified email before reading or submitting candidate
-                records. We sent a confirmation link to{' '}
-                <span className="font-semibold text-slate-900">{pendingVerificationUser.email}</span>.
-              </p>
+          <div>
+            <h2 className="text-xl font-bold text-slate-900">
+              {mode === 'signin' ? 'Sign in to Verto Bizserv' : 'Create recruiter account'}
+            </h2>
+            <p className="mt-1.5 text-sm text-slate-600">
+              {mode === 'signin'
+                ? 'Access your isolated recruiter pipeline or Admin Master Database.'
+                : 'New accounts start with Recruiter permissions until updated by an Admin.'}
+            </p>
 
-              {errorMsg && (
-                <div
-                  role="alert"
-                  className="mt-4 p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-800 flex items-start gap-2"
-                >
-                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span>{errorMsg}</span>
-                </div>
-              )}
-
-              {infoMsg && (
-                <div className="mt-4 p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span>{infoMsg}</span>
-                </div>
-              )}
-
-              <div className="mt-6 space-y-3">
-                <button
-                  type="button"
-                  onClick={onVerificationRefresh}
-                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-red-700 hover:bg-red-800 rounded-lg transition-colors"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  I have verified my email — Continue
-                </button>
-                <button
-                  type="button"
-                  onClick={handleResendVerification}
-                  className="w-full px-4 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg transition-colors"
-                >
-                  Resend verification email
-                </button>
-                <button
-                  type="button"
-                  onClick={() => signOut(auth)}
-                  className="w-full px-4 py-2 text-xs font-medium text-slate-500 hover:text-slate-800 transition-colors"
-                >
-                  Sign out and switch account
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div>
-              <h2 className="text-xl font-bold text-slate-900">
-                {mode === 'signin' ? 'Sign in to Verto Bizserv' : 'Create recruiter account'}
-              </h2>
-              <p className="mt-1.5 text-sm text-slate-600">
-                {mode === 'signin'
-                  ? 'Access your isolated recruiter pipeline or Admin Master Database.'
-                  : 'New accounts start with Recruiter permissions until promoted by an Admin.'}
-              </p>
-
-              {/* Mode Switch */}
-              <div
-                role="tablist"
-                aria-label="Authentication mode"
-                className="mt-6 grid grid-cols-2 gap-1 p-1 bg-slate-100 rounded-lg"
-              >
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={mode === 'signin'}
-                  onClick={() => {
-                    setMode('signin');
-                    setErrorMsg(null);
-                    setInfoMsg(null);
-                  }}
-                  className={`py-2 text-xs font-semibold rounded-md transition-colors whitespace-nowrap ${
-                    mode === 'signin'
-                      ? 'bg-white text-slate-900 shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Sign In
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={mode === 'signup'}
-                  onClick={() => {
-                    setMode('signup');
-                    setErrorMsg(null);
-                    setInfoMsg(null);
-                  }}
-                  className={`py-2 text-xs font-semibold rounded-md transition-colors whitespace-nowrap ${
-                    mode === 'signup'
-                      ? 'bg-white text-slate-900 shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Create Account
-                </button>
-              </div>
-
-              {/* Google Sign-In Primary Option */}
+            {/* Mode Switch */}
+            <div
+              role="tablist"
+              aria-label="Authentication mode"
+              className="mt-6 grid grid-cols-2 gap-1 p-1 bg-slate-100 rounded-lg"
+            >
               <button
                 type="button"
-                onClick={handleGoogleSignIn}
-                disabled={googleSubmitting || submitting}
-                className="mt-6 w-full inline-flex items-center justify-center gap-3 px-4 py-2.5 text-sm font-semibold text-slate-800 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg transition-colors disabled:opacity-60"
+                role="tab"
+                aria-selected={mode === 'signin'}
+                onClick={() => {
+                  setMode('signin');
+                  setErrorMsg(null);
+                  setInfoMsg(null);
+                }}
+                className={`py-2 text-xs font-semibold rounded-md transition-colors whitespace-nowrap cursor-pointer ${
+                  mode === 'signin'
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
               >
-                <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
-                  <path
-                    fill="#4285F4"
-                    d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
-                  />
-                  <path
-                    fill="#34A853"
-                    d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.11-6.72-4.96H1.29v3.14C3.26 21.3 7.31 24 12 24z"
-                  />
-                  <path
-                    fill="#FBBC05"
-                    d="M5.28 14.24c-.24-.72-.38-1.49-.38-2.24s.14-1.52.38-2.24V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.99-3.14z"
-                  />
-                  <path
-                    fill="#EA4335"
-                    d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.99 3.14c.95-2.85 3.6-4.96 6.72-4.96z"
-                  />
-                </svg>
-                {googleSubmitting ? 'Signing in with Google...' : 'Sign in with Google'}
+                Sign In
               </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === 'signup'}
+                onClick={() => {
+                  setMode('signup');
+                  setErrorMsg(null);
+                  setInfoMsg(null);
+                }}
+                className={`py-2 text-xs font-semibold rounded-md transition-colors whitespace-nowrap cursor-pointer ${
+                  mode === 'signup'
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Create Account
+              </button>
+            </div>
 
-              <div className="my-6 flex items-center gap-3">
-                <div className="h-px flex-1 bg-slate-200" />
-                <span className="text-xs text-slate-400">or with email</span>
-                <div className="h-px flex-1 bg-slate-200" />
+            {errorMsg && (
+              <div
+                role="alert"
+                className="mt-4 p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-800 flex items-start gap-2 leading-relaxed"
+              >
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{errorMsg}</span>
+              </div>
+            )}
+
+            {infoMsg && (
+              <div className="mt-4 p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-start gap-2 leading-relaxed">
+                <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{infoMsg}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="mt-5 space-y-4" noValidate>
+              {mode === 'signup' && (
+                <div>
+                  <label
+                    htmlFor="auth-full-name"
+                    className="block text-xs font-semibold text-slate-700 mb-1.5"
+                  >
+                    Full Name
+                  </label>
+                  <input
+                    id="auth-full-name"
+                    type="text"
+                    autoComplete="name"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="e.g., Priya Menon"
+                    maxLength={100}
+                    className="w-full px-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-600/20 focus:border-red-600"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label
+                  htmlFor="auth-email"
+                  className="block text-xs font-semibold text-slate-700 mb-1.5"
+                >
+                  Work Email
+                </label>
+                <input
+                  id="auth-email"
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@company.com"
+                  className="w-full px-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-600/20 focus:border-red-600"
+                />
               </div>
 
-              {errorMsg && (
-                <div
-                  role="alert"
-                  className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-800 flex items-start gap-2 leading-relaxed"
+              <div>
+                <label
+                  htmlFor="auth-password"
+                  className="block text-xs font-semibold text-slate-700 mb-1.5"
                 >
-                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span>{errorMsg}</span>
-                </div>
-              )}
+                  Password
+                </label>
+                <input
+                  id="auth-password"
+                  type="password"
+                  autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Minimum 6 characters"
+                  className="w-full px-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-600/20 focus:border-red-600"
+                />
+              </div>
 
-              {infoMsg && (
-                <div className="mb-4 p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-start gap-2 leading-relaxed">
-                  <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span>{infoMsg}</span>
-                </div>
-              )}
-
-              <form onSubmit={handleEmailSubmit} className="space-y-4" noValidate>
-                {mode === 'signup' && (
-                  <div>
-                    <label
-                      htmlFor="auth-full-name"
-                      className="block text-xs font-semibold text-slate-700 mb-1.5"
-                    >
-                      Full Name
-                    </label>
-                    <input
-                      id="auth-full-name"
-                      type="text"
-                      autoComplete="name"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      placeholder="e.g., Priya Menon"
-                      maxLength={100}
-                      className="w-full px-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-600/20 focus:border-red-600"
-                    />
-                  </div>
-                )}
-
-                <div>
-                  <label
-                    htmlFor="auth-email"
-                    className="block text-xs font-semibold text-slate-700 mb-1.5"
-                  >
-                    Work Email
-                  </label>
-                  <input
-                    id="auth-email"
-                    type="email"
-                    autoComplete="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@company.com"
-                    className="w-full px-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-600/20 focus:border-red-600"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="auth-password"
-                    className="block text-xs font-semibold text-slate-700 mb-1.5"
-                  >
-                    Password
-                  </label>
-                  <input
-                    id="auth-password"
-                    type="password"
-                    autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Minimum 6 characters"
-                    className="w-full px-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-600/20 focus:border-red-600"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={submitting || googleSubmitting}
-                  className="w-full px-4 py-2.5 text-sm font-semibold text-white bg-red-700 hover:bg-red-800 rounded-lg transition-colors disabled:opacity-60"
-                >
-                  {submitting
-                    ? mode === 'signin'
-                      ? 'Signing in...'
-                      : 'Creating account...'
-                    : mode === 'signin'
-                      ? 'Sign In'
-                      : 'Create Account'}
-                </button>
-              </form>
-            </div>
-          )}
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full px-4 py-2.5 text-sm font-semibold text-white bg-red-700 hover:bg-red-800 rounded-lg transition-colors disabled:opacity-60 cursor-pointer"
+              >
+                {submitting
+                  ? mode === 'signin'
+                    ? 'Signing in...'
+                    : 'Creating account...'
+                  : mode === 'signin'
+                    ? 'Sign In'
+                    : 'Create Account'}
+              </button>
+            </form>
+          </div>
         </div>
       </div>
+
+      {/* Google Apps Script API URL Config Modal */}
+      {showConfigModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 border border-slate-200 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="text-base font-bold text-slate-900">Google Apps Script Web App URL</h3>
+              <button
+                type="button"
+                onClick={() => setShowConfigModal(false)}
+                className="text-slate-400 hover:text-slate-600 text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="mt-3 text-xs text-slate-600 leading-relaxed">
+              Paste the Web App URL generated from your Google Sheet&apos;s Apps Script deployment
+              (see <code className="text-red-700 font-mono">gas/README.md</code>):
+            </p>
+            <form onSubmit={handleSaveApiUrl} className="mt-4 space-y-3">
+              <input
+                type="url"
+                value={customApiUrl}
+                onChange={(e) => setCustomApiUrl(e.target.value)}
+                placeholder="https://script.google.com/macros/s/.../exec"
+                className="w-full px-3.5 py-2 text-xs font-mono bg-slate-50 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-600/20 focus:border-red-600"
+              />
+              {savedConfigMessage && (
+                <p className="text-xs text-emerald-600 font-medium">✓ API URL saved successfully!</p>
+              )}
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowConfigModal(false)}
+                  className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 text-xs font-semibold text-white bg-red-700 hover:bg-red-800 rounded-lg"
+                >
+                  Save URL
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

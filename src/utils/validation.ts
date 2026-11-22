@@ -6,7 +6,7 @@ import {
   UserRole,
 } from '../types/recruitment';
 
-// Verbatim synchronized with firebase-blueprint.json & firestore.rules
+// 9-Column field limits and validations
 export const FIELD_LIMITS = {
   managerNameMax: 100,
   recruiterNameMax: 100,
@@ -192,7 +192,7 @@ export function isSafeHttpUrl(url: string): boolean {
 
 /**
  * Pure RBAC policy mirror used for defensive UI guards and security invariant unit tests.
- * Actual enforcement is performed server-side in firestore.rules.
+ * Actual enforcement is performed server-side in Google Apps Script.
  */
 export function canUserAccessCandidate(
   actor: Pick<UserProfile, 'uid' | 'role' | 'isActive'> | null,

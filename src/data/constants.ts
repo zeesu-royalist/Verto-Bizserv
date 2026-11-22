@@ -35,10 +35,11 @@ export function createDeterministicSeedData(todayIso: string): {
   managers: DropdownOption[];
   clients: DropdownOption[];
 } {
-  const now = Date.now();
-  const yesterday = new Date(now - 86400000).toISOString().slice(0, 10);
-  const twoDaysAgo = new Date(now - 2 * 86400000).toISOString().slice(0, 10);
-  const fourDaysAgo = new Date(now - 4 * 86400000).toISOString().slice(0, 10);
+  const baseTime = new Date(`${todayIso}T12:00:00Z`).getTime();
+  const yesterday = new Date(baseTime - 86400000).toISOString().slice(0, 10);
+  const twoDaysAgo = new Date(baseTime - 2 * 86400000).toISOString().slice(0, 10);
+  const fourDaysAgo = new Date(baseTime - 4 * 86400000).toISOString().slice(0, 10);
+  const now = baseTime;
 
   const managers: DropdownOption[] = MANAGER_SUGGESTIONS.map((name, idx) => ({
     id: `mgr-seed-${idx + 1}`,
@@ -60,7 +61,7 @@ export function createDeterministicSeedData(todayIso: string): {
     {
       uid: 'admin-rahul-001',
       name: 'Rahul Kumar',
-      email: 'rahul.kumar376603@gmail.com',
+      email: 'admin@vertobizserv.in',
       role: UserRole.ADMIN,
       isActive: true,
       createdAtMs: now - 30 * 86400000,
@@ -115,7 +116,7 @@ export function createDeterministicSeedData(todayIso: string): {
       candidateName: 'Deepak Sharma',
       candidateMobile: '9820145678',
       city: 'Bhiwandi',
-      resumeUrl: 'https://drive.google.com/drive/folders/12xg-IyGuOFIDmoeD_jB1avsLq7_i3Jfc?usp=sharing',
+      resumeUrl: 'https://drive.google.com/file/d/sample-resume-preview/view',
       resumeFileName: 'Deepak_Sharma_Warehouse_CV.pdf',
       resumeStoragePath: 'gdrive:preview-1001',
       recruiter_uid: 'rec-priya-002',
@@ -133,7 +134,7 @@ export function createDeterministicSeedData(todayIso: string): {
       candidateName: 'Sneha Kulkarni',
       candidateMobile: '9765432109',
       city: 'Pune',
-      resumeUrl: 'https://drive.google.com/drive/folders/12xg-IyGuOFIDmoeD_jB1avsLq7_i3Jfc?usp=sharing',
+      resumeUrl: 'https://drive.google.com/file/d/sample-resume-preview/view',
       resumeFileName: 'Sneha_Kulkarni_StoreMgr.pdf',
       resumeStoragePath: 'gdrive:preview-1002',
       recruiter_uid: 'rec-arjun-003',
@@ -169,7 +170,7 @@ export function createDeterministicSeedData(todayIso: string): {
       candidateName: 'Ritu Chaudhary',
       candidateMobile: '9910456723',
       city: 'Gurugram',
-      resumeUrl: 'https://drive.google.com/drive/folders/12xg-IyGuOFIDmoeD_jB1avsLq7_i3Jfc?usp=sharing',
+      resumeUrl: 'https://drive.google.com/file/d/sample-resume-preview/view',
       resumeFileName: 'Ritu_Chaudhary_OpsLead.pdf',
       resumeStoragePath: 'gdrive:preview-1004',
       recruiter_uid: 'rec-neha-004',
@@ -205,7 +206,7 @@ export function createDeterministicSeedData(todayIso: string): {
       candidateName: 'Karthik Subramanian',
       candidateMobile: '9444109821',
       city: 'Chennai',
-      resumeUrl: 'https://drive.google.com/drive/folders/12xg-IyGuOFIDmoeD_jB1avsLq7_i3Jfc?usp=sharing',
+      resumeUrl: 'https://drive.google.com/file/d/sample-resume-preview/view',
       resumeFileName: 'Karthik_S_Resume.pdf',
       resumeStoragePath: 'gdrive:preview-1006',
       recruiter_uid: 'rec-priya-002',
@@ -223,7 +224,7 @@ export function createDeterministicSeedData(todayIso: string): {
       candidateName: 'Sandeep Yadav',
       candidateMobile: '9811902345',
       city: 'Noida',
-      resumeUrl: 'https://drive.google.com/drive/folders/12xg-IyGuOFIDmoeD_jB1avsLq7_i3Jfc?usp=sharing',
+      resumeUrl: 'https://drive.google.com/file/d/sample-resume-preview/view',
       resumeFileName: 'Sandeep_Yadav_HubSup.pdf',
       resumeStoragePath: 'gdrive:preview-1007',
       recruiter_uid: 'rec-neha-004',

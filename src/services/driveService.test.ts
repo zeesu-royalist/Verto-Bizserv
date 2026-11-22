@@ -9,10 +9,10 @@ import {
 } from './driveService';
 
 test('RESUME_DRIVE_FOLDER_ID and URL point to the designated Verto Bizserv Google Drive folder', () => {
-  assert.equal(RESUME_DRIVE_FOLDER_ID, '12xg-IyGuOFIDmoeD_jB1avsLq7_i3Jfc');
+  assert.equal(RESUME_DRIVE_FOLDER_ID, 'YOUR_RESUME_FOLDER_ID');
   assert.equal(
     RESUME_DRIVE_FOLDER_URL,
-    'https://drive.google.com/drive/folders/12xg-IyGuOFIDmoeD_jB1avsLq7_i3Jfc?usp=sharing'
+    'https://drive.google.com/drive/my-drive'
   );
 });
 
