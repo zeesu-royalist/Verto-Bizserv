@@ -95,7 +95,7 @@ export async function callGasApi<T = unknown>(
   const apiUrl = getGasApiUrl();
   if (!apiUrl) {
     throw new Error(
-      'Google Apps Script Web App URL is not configured. Please set VITE_GAS_API_URL in .env or configure it in Settings.'
+      'Server connection is not configured. Please connect the backend API in Server Connection Settings.'
     );
   }
 
@@ -138,7 +138,7 @@ export async function callGasApi<T = unknown>(
   } catch {
     if (rawText.includes('<html') || rawText.includes('<!DOCTYPE') || rawText.includes('<!doctype')) {
       throw new Error(
-        'Google Apps Script returned an HTML page instead of JSON. Please verify that your Web App is deployed with "Who has access: Anyone" and that the URL ends with /exec.'
+        'Server returned an invalid HTML response instead of JSON. Please verify that your backend API is deployed with public access.'
       );
     }
     throw new Error(`Invalid response from server: ${rawText.slice(0, 120)}`);
@@ -251,7 +251,7 @@ export async function gasGetCandidates(): Promise<CandidateRecord[]> {
 export async function gasCreateCandidate(values: CandidateFormValues): Promise<CandidateRecord> {
   const res = await callGasApi('createCandidate', values as unknown as Record<string, unknown>);
   if (!res.record) {
-    throw new Error('Failed to create candidate in Google Sheet.');
+    throw new Error('Failed to save candidate record in database.');
   }
   return res.record;
 }
@@ -300,7 +300,7 @@ export async function gasAddDropdown(
   name: string
 ): Promise<DropdownOption> {
   const res = await callGasApi('addDropdown', { category, name });
-  if (!res.option) throw new Error('Failed to add option in Google Sheet.');
+  if (!res.option) throw new Error('Failed to add option in database.');
   return res.option;
 }
 
@@ -380,7 +380,7 @@ export async function gasUploadResume(
         if (onProgress) onProgress(100);
 
         if (!res.downloadUrl || !res.storagePath) {
-          throw new Error('Google Drive upload did not return a valid file link.');
+          throw new Error('Cloud storage did not return a valid document link.');
         }
 
         resolve({

@@ -606,8 +606,8 @@ export default function App() {
               </h2>
               <p className="text-sm text-slate-500 mt-1">
                 {isAdmin
-                  ? 'Submissions are stored directly in the Master Google Sheet with full recruiter attribution.'
-                  : 'Your recruiter profile is automatically attached and recorded in Google Sheets.'}
+                  ? 'Submissions are stored securely in the Master Database with complete recruiter attribution.'
+                  : 'Your recruiter profile is automatically verified and recorded in the database.'}
               </p>
             </div>
             <button

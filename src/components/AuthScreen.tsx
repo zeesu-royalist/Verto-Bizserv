@@ -93,12 +93,12 @@ export function AuthScreen({ onLogin, onRegister }: AuthScreenProps) {
 
           <div className="mt-14 max-w-md">
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white leading-tight [text-wrap:balance]">
-              Recruitment tracking with Google Sheets & Drive.
+              Enterprise Recruitment & Hiring Management.
             </h1>
             <p className="mt-5 text-red-100/80 text-sm sm:text-base leading-relaxed">
-              Log store and warehouse hiring submissions in a standardized 9-column ledger. Each
-              recruiter sees only their own pipeline while administrators oversee the unified master
-              Google Sheet database.
+              Standardize store and warehouse hiring operations with end-to-end candidate tracking.
+              Each recruiter manages their dedicated submissions while leadership oversees real-time
+              analytics and the master hiring database.
             </p>
           </div>
         </div>
@@ -107,20 +107,20 @@ export function AuthScreen({ onLogin, onRegister }: AuthScreenProps) {
           <div className="flex items-start gap-3">
             <ShieldCheck className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-semibold text-white">Row-Level Privacy Isolation</p>
+              <p className="text-sm font-semibold text-white">Role-Based Data Isolation</p>
               <p className="text-xs text-red-200/75 mt-0.5 leading-relaxed">
-                Recruiters access only their own candidates. The Master Database remains
-                consolidated in Google Sheets for Administrators.
+                Recruiters access only their own candidate pipeline. Administrators maintain complete
+                visibility over the organization-wide master database.
               </p>
             </div>
           </div>
           <div className="flex items-start gap-3">
             <Lock className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-semibold text-white">Direct Google Drive Resume Storage</p>
+              <p className="text-sm font-semibold text-white">Secure Document Management</p>
               <p className="text-xs text-red-200/75 mt-0.5 leading-relaxed">
-                Candidate CVs are stored directly inside your office Google Drive folder with
-                instant preview links.
+                Candidate resumes are stored in encrypted cloud storage with instant verification
+                and one-click access for recruitment teams.
               </p>
             </div>
           </div>
@@ -134,10 +134,10 @@ export function AuthScreen({ onLogin, onRegister }: AuthScreenProps) {
           type="button"
           onClick={() => setShowConfigModal(true)}
           className="absolute top-6 right-6 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-800 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors shadow-xs"
-          title="Configure Google Apps Script API URL"
+          title="Configure Server Connection"
         >
           <Settings className="w-3.5 h-3.5" />
-          <span>Google Sheet API</span>
+          <span>Server Connection</span>
         </button>
 
         <div className="w-full max-w-md bg-white border border-slate-200 rounded-xl p-8">
@@ -286,12 +286,12 @@ export function AuthScreen({ onLogin, onRegister }: AuthScreenProps) {
         </div>
       </div>
 
-      {/* Google Apps Script API URL Config Modal */}
+      {/* Server API Connection Config Modal */}
       {showConfigModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 border border-slate-200 animate-in fade-in zoom-in-95">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="text-base font-bold text-slate-900">Google Apps Script Web App URL</h3>
+              <h3 className="text-base font-bold text-slate-900">Backend Server Connection</h3>
               <button
                 type="button"
                 onClick={() => setShowConfigModal(false)}
@@ -301,19 +301,18 @@ export function AuthScreen({ onLogin, onRegister }: AuthScreenProps) {
               </button>
             </div>
             <p className="mt-3 text-xs text-slate-600 leading-relaxed">
-              Paste the Web App URL generated from your Google Sheet&apos;s Apps Script deployment
-              (see <code className="text-red-700 font-mono">gas/README.md</code>):
+              Connect your centralized recruitment server endpoint to synchronize candidate databases and document records:
             </p>
             <form onSubmit={handleSaveApiUrl} className="mt-4 space-y-3">
               <input
                 type="url"
                 value={customApiUrl}
                 onChange={(e) => setCustomApiUrl(e.target.value)}
-                placeholder="https://script.google.com/macros/s/.../exec"
+                placeholder="https://.../exec"
                 className="w-full px-3.5 py-2 text-xs font-mono bg-slate-50 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-600/20 focus:border-red-600"
               />
               {savedConfigMessage && (
-                <p className="text-xs text-emerald-600 font-medium">✓ API URL saved successfully!</p>
+                <p className="text-xs text-emerald-600 font-medium">✓ Server connected successfully!</p>
               )}
               <div className="flex items-center justify-end gap-2 pt-2">
                 <button
@@ -327,7 +326,7 @@ export function AuthScreen({ onLogin, onRegister }: AuthScreenProps) {
                   type="submit"
                   className="px-4 py-1.5 text-xs font-semibold text-white bg-red-700 hover:bg-red-800 rounded-lg"
                 >
-                  Save URL
+                  Connect Server
                 </button>
               </div>
             </form>

@@ -7,7 +7,7 @@ export const RESUME_DRIVE_FOLDER_URL =
 
 export class DriveAuthRequiredError extends Error {
   constructor(
-    message = 'Connect your Google Drive account to upload resumes into the Verto Bizserv folder.'
+    message = 'Connect your document storage vault to upload resumes.'
   ) {
     super(message);
     this.name = 'DriveAuthRequiredError';
@@ -114,7 +114,7 @@ export async function uploadResumeToGoogleDrive(
     };
 
     xhr.onerror = () => {
-      reject(new Error('Network error while uploading resume to Google Drive. Please try again.'));
+      reject(new Error('Network error while uploading resume document. Please try again.'));
     };
 
     xhr.onload = () => {
@@ -122,7 +122,7 @@ export async function uploadResumeToGoogleDrive(
         try {
           const parsed = JSON.parse(xhr.responseText) as DriveUploadResponse;
           if (!parsed.id) {
-            reject(new Error('Google Drive did not return a file ID for the uploaded resume.'));
+            reject(new Error('Storage vault did not return a file identifier for the uploaded resume.'));
             return;
           }
           if (onProgress) onProgress(100);
@@ -132,7 +132,7 @@ export async function uploadResumeToGoogleDrive(
             storagePath: `gdrive:${parsed.id}`,
           });
         } catch {
-          reject(new Error('Unexpected response from Google Drive after upload.'));
+          reject(new Error('Unexpected response from storage vault after upload.'));
         }
         return;
       }
@@ -141,7 +141,7 @@ export async function uploadResumeToGoogleDrive(
         options.onTokenInvalid?.();
         reject(
           new DriveAuthRequiredError(
-            'Your Google Drive session expired. Click "Connect Google Drive" to continue uploading.'
+            'Your storage session expired. Click "Connect Storage" to continue uploading.'
           )
         );
         return;
@@ -158,7 +158,7 @@ export async function uploadResumeToGoogleDrive(
       if (xhr.status === 404) {
         reject(
           new Error(
-            'Could not access the target Google Drive folder. Verify your Google account has Editor access to the Verto Bizserv resumes folder.'
+            'Could not access the target storage vault. Verify your account has write permissions.'
           )
         );
         return;
@@ -169,7 +169,7 @@ export async function uploadResumeToGoogleDrive(
           options.onTokenInvalid?.();
           reject(
             new DriveAuthRequiredError(
-              'Google Drive upload permission is required. Click "Connect Google Drive" and approve access.'
+              'Document upload permission is required. Click "Connect Storage" and approve access.'
             )
           );
           return;
@@ -177,8 +177,8 @@ export async function uploadResumeToGoogleDrive(
         reject(
           new Error(
             apiMessage
-              ? `Google Drive permission denied: ${apiMessage}`
-              : 'Permission denied when uploading to the Google Drive folder. Ensure your account has Editor access to the shared folder.'
+              ? `Storage permission denied: ${apiMessage}`
+              : 'Permission denied when uploading to the document vault. Ensure your account has write access.'
           )
         );
         return;
@@ -187,8 +187,8 @@ export async function uploadResumeToGoogleDrive(
       reject(
         new Error(
           apiMessage
-            ? `Google Drive upload failed (${xhr.status}): ${apiMessage}`
-            : `Google Drive upload failed with status ${xhr.status}.`
+            ? `Document upload failed (${xhr.status}): ${apiMessage}`
+            : `Document upload failed with status ${xhr.status}.`
         )
       );
     };
